@@ -8,13 +8,6 @@
 ;      (+ (term a)
 ;         (sum term (next a) next b))))
 
-(define (sum term a next b)
-  (define (iter a result)
-    (if (> a b)
-        result
-        (iter (next a) (+ result (term a)))))
-  (iter a 0))
-
 (define (simpson f a b n)
   (define (h)
     (/ (- b a) n))
@@ -36,3 +29,10 @@
 ;(+ 0 (+ 4/64 (+ 16/64 (+ 108/64 (+ 1 (sum simpson-f 5/4 simpson-next 1))))))
 ;(+ 0 (+ 4/64 (+ 16/64 (+ 108/64 (+ 1 0)))))
 ; 1/12(4/64 + 16/64 + 108/64 + 1) = 3/12 = 1/4
+
+(define (sum term a next b)
+  (define (iter a result)
+    (if (> a b)
+        result
+        (iter (next a) (+ result (term a)))))
+  (iter a 0))

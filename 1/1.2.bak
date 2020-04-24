@@ -1,0 +1,84 @@
+#lang sicp
+
+
+;(define (+ a b)
+;  (if (= a 0) b (inc (+ (dec a) b))))
+;(+ 4 5)
+;(inc (+ 3 5))
+;(inc (inc (+ 2 5)))
+;(inc (inc (inc (+ 1 5))))
+;(inc (inc (inc (inc (+ 0 5)))))
+;(inc (inc (inc (inc 5))))
+;(inc (inc (inc 6)))
+;(inc (inc 7))
+;(inc 8)
+;9
+; Recursive
+
+;(define (+ a b)
+;  (if (= a 0) b (+ (dec a) (inc b))))
+;(+ 4 5)
+;(+ 3 6)
+;(+ 2 7)
+;(+ 1 8)
+;(+ 0 9)
+;9
+; Iterative
+
+;(define (A x y)
+;  (cond ((= y 0) 0)
+;        ((= x 0) (* 2 y))
+;        ((= y 1) 2)
+;        (else (A (- x 1) (A x (- y 1))))))
+;(A 1 10)
+;(A 0 (A 1 9))
+;1024
+;(A 2 4)
+;(A 1 (A 2 3))
+;(A 1 (A 1 (A 2 2)))
+;(A 1 (A 1 (A 1 (A 2 1))))
+;(A 1 (A 1 (A 1 2)))
+;65536
+;(A 3 3)
+;65536
+
+;2n
+;(define (f n) (A 0 n))
+;2^n
+;(define (g n) (A 1 n))
+;(2^2^2^2...)n times
+;(define (h n) (A 2 n))
+
+;(define (f n)
+;  (if (< n 3) n (+ (f (- n 1)) (* 2 (f (- n 2))) (* 3 (f (- n 3))))))
+;(define (f n)
+;  (define (iter a b c count)
+;    (if (= count 0) a (iter b c (+ (* 3 a) (* 2 b) c) (- count 1))))
+; (iter 0 1 2 n))
+
+(define (count-change amount) (cc amount 5))
+(define (cc amount kinds-of-coins)
+  (cond ((= amount 0) 1)
+        ((or (< amount 0) (= kinds-of-coins 0)) 0)
+        (else (+ (cc amount
+                     (- kinds-of-coins 1))
+                 (cc (- amount
+                        (first-denomination
+                         kinds-of-coins))
+                     kinds-of-coins)))))
+(define (first-denomination kinds-of-coins)
+  (cond ((= kinds-of-coins 1) 1)
+        ((= kinds-of-coins 2) 5)
+        ((= kinds-of-coins 3) 10)
+        ((= kinds-of-coins 4) 25)
+        ((= kinds-of-coins 5) 50)))
+; 1-4: 1s
+; 5-9: 1s/one 5 and 1s
+; 10-14: 1s/one 5 and 1s/two 5s and 1s/one 10 and 1s
+; 15-19: 1s/one 5 and 1s/two 5s and 1s/three 5s and 1s/one 10 and 1s/one 10 and one 5 and 1s
+; 20-24: 1s/one 5 and 1s/two 5s and 1s/three 5s and 1s/four 5s and 1s/one 10 and 1s/two 10 and 1s/one 10 and one 5 and 1s/one 10 and two 5s and 1s
+;(count-change 20)
+
+(define (pascal x y)
+  (if (or (= y 0) (= x y)) 1 (+ (pascal (- x 1) (- y 1)) (pascal (- x 1) y))))
+(pascal 4 2)

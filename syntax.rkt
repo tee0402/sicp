@@ -1,0 +1,44 @@
+#lang sicp
+
+Everything is #t except #f
+Consequent in cond may be a sequence of expressions, but consequent and alternative in if can only be a single expression
+If and/or evaluates to true, the last evaluated true value is returned
+Sometimes let can be replaced by defines: the difference is that the scope of let is well-defined
+The definition of a function means that (lambda (x) (f x)) is precisely f
+
+(define <name> <value>)
+
+(define (<name> <formal parameters>)
+  <body>)
+
+(cond (<p1> <e1>)
+      (<p2> <e2>)
+      ...
+      (<pn> <en>))
+
+(if <predicate> <consequent> <alternative>)
+
+(< <e1> <e2>)
+(= <e1> <e2>)
+(> <e1> <e2>)
+(and <e1>...<en>)
+(or <e1>...<en>)
+(not <e>)
+
+(lambda (<formal parameters>) <body>)
+
+(let ((<var1> <exp1>)
+      (<var2> <exp2>)
+      ...
+      (<varn> <expn>))
+  <body>)
+is the same as
+((lambda (<var1>...<varn>)
+   <body>)
+ <exp1>
+ ...
+ <expn>)
+
+(newline)
+(display <value>)
+(error <exp1>...<expn>)
