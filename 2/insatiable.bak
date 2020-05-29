@@ -1,4 +1,0 @@
-#lang sicp
-
-(define (get-record name records)
-  name)

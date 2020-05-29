@@ -14,14 +14,14 @@
 ; 6
 ; 16
 
-;(/ (+ 5 4 (- 2 (- 3 (+ 6 (/ 4 5))))) (* 3 (- 6 2) (- 2 7)))
+; (/ (+ 5 4 (- 2 (- 3 (+ 6 (/ 4 5))))) (* 3 (- 6 2) (- 2 7)))
 
 (define (square x) (* x x))
-;(define (sum-of-squares a b) (+ (square a) (square b)))
-;(define (largest a b c)
-;  (cond ((and (>= a c) (>= b c)) (sum-of-squares a b))
-;        ((and (>= a b) (>= c b)) (sum-of-squares a c))
-;        (else (sum-of-squares b c))))
+(define (sum-of-squares a b) (+ (square a) (square b)))
+(define (largest a b c)
+  (cond ((and (>= a c) (>= b c)) (sum-of-squares a b))
+        ((and (>= a b) (>= c b)) (sum-of-squares a c))
+        (else (sum-of-squares b c))))
 
 ; a plus the absolute value of b
 
@@ -34,8 +34,8 @@
 ; which makes it run in an infinite loop
 ; The alternative is to simply use the cond directly
 
-;(define (average x y)
-;  (/ (+ x y) 2))
+(define (average x y)
+  (/ (+ x y) 2))
 ;(define (improve guess x)
 ;  (average guess (/ x guess)))
 ;(define (sqrt-iter guess x)
@@ -68,5 +68,4 @@
       (cbrt-iter (improve guess x) x)))
 (define (cbrt x)
   (cbrt-iter 1.0 x))
-
 (cbrt 9)

@@ -1,0 +1,141 @@
+#lang sicp
+
+; magnitude does not really act like a generic procedure at the top level because it only works on complex numbers
+; It simply strips off the complex tag and calls itself again, at which point it directs the data to the right representation package
+; apply-generic is called twice: magnitude calls apply-generic, which strips off the complex tag and calls magnitude again, which calls
+; apply-generic, which strips off the rectangular tag and calls the magnitude procedure for the rectangular representation, returning 5
+
+(define (attach-tag type-tag contents)
+  (if (eq? type-tag 'scheme-number)
+      contents
+      (cons type-tag contents)))
+(define (type-tag datum)
+  (cond ((pair? datum) (car datum))
+        ((number? datum) 'scheme-number)
+        (else (error "Bad tagged datum: TYPE-TAG" datum))))
+(define (contents datum)
+  (cond ((pair? datum) (cdr datum))
+        ((number? datum) datum)
+        (else (error "Bad tagged datum: CONTENTS" datum))))
+
+;(define (apply-generic op . args)
+;  (let ((type-tags (map type-tag args)))
+;    (let ((proc (get op type-tags)))
+;      (if proc
+;          (apply proc (map contents args))
+;          (error
+;           "No method for these types: APPLY-GENERIC"
+;           (list op type-tags))))))
+;(define (equ? x y) (apply-generic 'equ? x y))
+; In install-scheme-number-package:
+;(define (equ? x y) (= x y))
+;(put 'equ? '(scheme-number scheme-number) equ?)
+; In install-rational-package:
+;(define (equ? x y) (and (= (numer x) (numer y)) (= (denom x) (denom y))))
+;(put 'equ? '(rational rational) equ?)
+; In install-complex-package:
+;(define (equ? x y) (and (= (real-part x) (real-part y)) (= (imag-part x) (imag-part y))))
+;(put 'equ? '(complex complex) equ?)
+
+;(define (=zero? x) (apply-generic '=zero? x))
+; In install-scheme-number-package:
+;(define (=zero? x) (= x 0))
+;(put '=zero? '(scheme-number) =zero?)
+; In install-rational-package:
+;(define (=zero? x) (= (numer x) 0))
+;(put '=zero? '(rational) =zero?)
+; In install-complex-package:
+;(define (=zero? x) (= (magnitude x) 0))
+;(put '=zero? '(complex) =zero?)
+
+; apply-generic will go into an infinite loop, since it will keep calling itself with a coerced but unchanged first argument
+; Louis is correct that apply-generic will unnecessarily try to coerce arguments of the same type if there is no defined procedure,
+; which also happens after it coerces arguments of different types into each other
+; (if (and (= (length args) 2) (not (eq? (car type-tags) (cadr type-tags))))
+
+(define (all-equal items)
+  (let ((rest (cdr items)))
+    (if (null? rest)
+      true
+      (and (equal? (car items) (car rest)) (all-equal rest)))))
+(define (all-non-false items)
+  (cond ((null? items) true)
+        ((car items) (all-non-false (cdr items)))
+        (else false)))
+(define (apply-ops ops args)
+  (if (null? ops)
+      '()
+      (cons ((car ops) (car args)) (apply-ops (cdr ops) (cdr args)))))
+;(define (apply-generic op . args)
+;  (let ((type-tags (map type-tag args)))
+;    (define (coercion-iter curr-args)
+;      (if (null? curr-args)
+;          (error "No method for these types"
+;                 (list op type-tags))
+;          (let ((try-type (type-tag (car curr-args))))
+;            (let ((coercion-procs (map (lambda (type)
+;                                    (if (eq? type try-type)
+;                                        (lambda (x) x)
+;                                        (get-coercion type try-type)))
+;                                  type-tags)))
+;              (if (all-non-false coercion-procs)
+;                  (let ((new-args (apply-ops coercion-procs args)))
+;                    (let ((new-type-tags (map type-tag new-args)))
+;                      (let ((proc (get op new-type-tags)))
+;                        (if proc
+;                            (apply proc (map contents new-args))
+;                            (coercion-iter (cdr curr-args))))))
+;                  (coercion-iter (cdr curr-args)))))))
+;    (let ((proc (get op type-tags)))
+;      (if proc
+;          (apply proc (map contents args))
+;          (if (not (all-equal type-tags))
+;              (coercion-iter args)
+;              (error "No method for these types"
+;                 (list op type-tags)))))))
+; This strategy is not general enough if, for example:
+; 1. Types 1 and 2 can be coerced into type 3 and combined, but it will not be tried
+; 2. Types 1 and 2 can be coerced into each other, but only the operation of (type 2, type 1) is defined, but it will not be tried
+
+;(define (integer->rational n)
+;  (make-rational (contents n) 1))
+;(put 'raise 'integer integer->rational)
+; In rational package:
+;(define (rational->real n)
+;  (let ((rat (contents n)))
+;    (make-real (/ (numer rat) (denom rat)))))
+;(put 'raise 'rational rational->real)
+;(define (real->complex n)
+;  (make-complex-from-real-imag (contents n) 0))
+;(put 'raise 'real real->complex)
+;(define (raise arg)
+;  (apply-generic 'raise arg))
+
+(define (all-false items)
+  (cond ((null? items) true)
+        ((not (car items)) (all-non-false (cdr items)))
+        (else false)))
+(define (apply-generic op . args)
+  (let ((type-tags (map type-tag args)))
+    (define (raise-iter curr-args)
+      (let ((curr-types (map type-tag curr-args)))
+        (if (not (all-equal curr-types))
+            (error "No method for these types"
+                   (list op type-tags))
+            (let ((try-type (type-tag (car curr-args))))
+              (let ((coercion-procs (map raise curr-types)))
+                (if (all-non-false coercion-procs)
+                    (let ((new-args (apply-ops coercion-procs args)))
+                      (let ((new-type-tags (map type-tag new-args)))
+                        (let ((proc (get op new-type-tags)))
+                          (if proc
+                              (apply proc (map contents new-args))
+                              (coercion-iter (cdr curr-args))))))
+                    (coercion-iter (cdr curr-args))))))))
+    (let ((proc (get op type-tags)))
+      (if proc
+          (apply proc (map contents args))
+          (if (not (all-equal type-tags))
+              (raise-iter args)
+              (error "No method for these types"
+                 (list op type-tags)))))))

@@ -14,4 +14,58 @@
 ; 6
 ; 16
 
-(/ (+ 5 (+ 4 (- 2 (- 3 (+ 6 (/ 4 5)))))) (* 3 (- 6 2) (- 2 7)))
+; (/ (+ 5 4 (- 2 (- 3 (+ 6 (/ 4 5))))) (* 3 (- 6 2) (- 2 7)))
+
+(define (square x) (* x x))
+;(define (sum-of-squares a b) (+ (square a) (square b)))
+;(define (largest a b c)
+;  (cond ((and (>= a c) (>= b c)) (sum-of-squares a b))
+;        ((and (>= a b) (>= c b)) (sum-of-squares a c))
+;        (else (sum-of-squares b c))))
+
+; a plus the absolute value of b
+
+; If applicative-order evaluation, (p) will be evaluated, which returns (p), which is evaluated again,
+; so evaluation never stops and there's an infinite loop
+
+; If normal-order evaluation, test will expand into (if (= 0 0) 0 (p))), which returns 0
+
+; if needs to be a special form because you do not want to evaluate both the then-clause and else-clause in a recursive procedure,
+; which makes it run in an infinite loop
+; The alternative is to simply use the cond directly
+
+;(define (average x y)
+;  (/ (+ x y) 2))
+;(define (improve guess x)
+;  (average guess (/ x guess)))
+;(define (sqrt-iter guess x)
+;  (if (good-enough? guess x)
+;      guess
+;      (sqrt-iter (improve guess x) x)))
+;(define (sqrt x)
+;  (sqrt-iter 1.0 x))
+
+;(define (good-enough? guess x)
+;  (< (abs (- (square guess) x)) 0.001))
+; For small numbers, the difference between guesses will be very small very quickly, so a wrong answer will be arrived at
+;(sqrt 0.000000000000000000000012)
+; For large numbers, the guess will not have the precision needed to yield a small enough difference with the radicand when squared, so
+; the procedure will run forever
+;(sqrt 92111111111111111111111)
+
+; This works better for small and large numbers
+;(define (good-enough? guess x)
+;  (< (/ (abs (- (square guess) x)) guess) 0.001))
+
+(define (cube x) (* x x x))
+(define (good-enough? guess x)
+  (< (/ (abs (- (cube guess) x)) guess) 0.001))
+(define (improve guess x)
+  (/ (+ (/ x (square guess)) (* 2 guess)) 3))
+(define (cbrt-iter guess x)
+  (if (good-enough? guess x)
+      guess
+      (cbrt-iter (improve guess x) x)))
+(define (cbrt x)
+  (cbrt-iter 1.0 x))
+(cbrt 9)

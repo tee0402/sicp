@@ -16,7 +16,6 @@
           ((odd? (/ (- x a) (h))) (* 4 (f x)))
           (else (* 2 (f x)))))
   (* (/ (h) 3) (sum simpson-f a next b)))
-
 ; 1/4
 ;(simpson cube 0 1 100)
 ; 1/4
@@ -38,7 +37,6 @@
 (define (inc x) (+ x 1))
 (define (factorial n)
   (product identity 1 inc n))
-
 ;(factorial 5)
 
 (define (square x) (* x x))
@@ -46,7 +44,6 @@
   (define (term x) (if (or (= x 2) (= x n)) x (square x)))
   (define (next x) (+ x 2))
   (* 4.0 (/ (product term 2 next n) (product term 3 next n))))
-
 ;(pi 10000)
 
 ;(define (product term a next b)

@@ -1,0 +1,399 @@
+#lang sicp
+
+(define (last-pair items)
+  (let ((rest (cdr items)))
+    (if (null? rest)
+        items
+        (last-pair rest))))
+;(last-pair (list 23 72 149 34))
+
+(define (reverse items)
+  (define (iter items result)
+    (if (null? items)
+        result
+        (iter (cdr items) (cons (car items) result))))
+  (iter items nil))
+;(reverse (list 1 4 9 16 25))
+
+(define us-coins (list 50 25 10 5 1))
+;(define us-coins (list 5 25 50 1 10))
+(define uk-coins (list 100 50 20 10 5 2 1 0.5))
+(define (no-more? coins) (null? coins))
+(define (first-denomination coins) (car coins))
+(define (except-first-denomination coins) (cdr coins))
+(define (cc amount coin-values)
+  (cond ((= amount 0) 1)
+        ((or (< amount 0) (no-more? coin-values)) 0)
+        (else
+         (+ (cc amount
+                (except-first-denomination
+                 coin-values))
+            (cc (- amount
+                   (first-denomination
+                    coin-values))
+                coin-values)))))
+;(cc 100 us-coins)
+;(cc 100 uk-coins)
+; The order of the list does not matter because the algorithm is not affected by it
+; The algorithm will still recursively find and check all combinations of coins
+
+(define (filter list filter?)
+  (cond ((null? list) nil)
+        ((filter? (car list)) (cons (car list) (filter (cdr list) filter?)))
+        (else (filter (cdr list) filter?))))
+(define (same-parity x . y)
+  (if (odd? x)
+      (cons x (filter y odd?))
+      (cons x (filter y even?))))
+;(same-parity 1 2 3 4 5 6 7)
+;(same-parity 2 3 4 5 6 7)
+
+(define (square x) (* x x))
+;(define (square-list items)
+;  (if (null? items)
+;      nil
+;      (cons (square (car items)) (square-list (cdr items)))))
+;(define (map proc items)
+;  (if (null? items)
+;      nil
+;      (cons (proc (car items))
+;            (map proc (cdr items)))))
+(define (square-list items)
+  (map (lambda (x) (square x)) items))
+
+; Every time we cdr down the list we cons the car to the front of the result, which contains all the elements before it
+; That will produce something like ((((nil 1) 4) 9) 16), which is not how a list is structured
+
+(define (for-each proc items)
+  (cond ((null? items) true)
+        (else (proc (car items))
+              (for-each proc (cdr items)))))
+
+;(1 (2 (3 4)))
+
+;(car (cdr (car (cdr (cdr (list 1 3 (list 5 7) 9))))))
+;(car (car (list (list 7))))
+;(car (cdr (car (cdr (car (cdr (car (cdr (car (cdr (car (cdr (list 1 (list 2 (list 3 (list 4 (list 5 (list 6 7))))))))))))))))))
+
+;(1 2 3 4 5 6)
+;((1 2 3) 4 5 6)
+;((1 2 3) (4 5 6))
+
+(define (deep-reverse items)
+  (define (iter items result)
+    (cond ((null? items) result)
+          ((pair? (car items)) (iter (cdr items) (cons (deep-reverse (car items)) result)))
+          (else (iter (cdr items) (cons (car items) result)))))
+  (iter items nil))
+(define x (list (list 1 2) (list 3 4)))
+;(deep-reverse x)
+
+(define (fringe items)
+  (cond ((null? items) nil)
+        ((pair? items) (append (fringe (car items)) (fringe (cdr items))))
+        (else (list items))))
+;(fringe x)
+;(fringe (list x x))
+
+(define (left-branch mobile) (car mobile))
+(define (right-branch mobile) (cadr mobile))
+(define (branch-length branch) (car branch))
+(define (branch-structure branch) (cadr branch))
+(define (total-weight mobile)
+  (if (not (pair? mobile))
+      mobile
+      (+ (total-weight (branch-structure (left-branch mobile))) (total-weight (branch-structure (right-branch mobile))))))
+(define (balanced? mobile)
+  (define (balanced mobile)
+    (= (* (branch-length (left-branch mobile)) (total-weight (branch-structure (left-branch mobile))))
+       (* (branch-length (right-branch mobile)) (total-weight (branch-structure (right-branch mobile))))))
+  (if (not (pair? mobile))
+      true
+      (and (balanced mobile)
+           (balanced? (branch-structure (left-branch mobile)))
+           (balanced? (branch-structure (right-branch mobile))))))
+; I would only need to change right-branch and branch-structure to use cdr instead of cadr
+
+;(define (square-tree tree)
+;  (cond ((null? tree) nil)
+;        ((not (pair? tree)) (square tree))
+;        (else (cons (square-tree (car tree))
+;                    (square-tree (cdr tree))))))
+(define (square-tree tree)
+  (map (lambda (subtree)
+         (if (pair? subtree)
+             (square-tree subtree)
+             (square subtree)))
+       tree))
+
+(define (tree-map proc tree)
+  (cond ((null? tree) nil)
+        ((not (pair? tree)) (proc tree))
+        (else (cons (tree-map proc (car tree))
+                    (tree-map proc (cdr tree))))))
+
+; This works because an empty set only has the empty set as its subset, and with each new element to the set, the new subsets added to the
+; set of all subsets are the previous subsets with the new element added to them
+; Alternatively, we can think of the set of all subsets as the set of all subsets not containing the first element together with the
+; set of all subsets containing the first element
+(define (subsets s)
+  (if (null? s)
+      (list nil)
+      (let ((rest (subsets (cdr s))))
+        (append rest (map (lambda (set)
+                            (append (list (car s)) set))
+                          rest)))))
+
+(define (accumulate op initial sequence)
+  (if (null? sequence)
+      initial
+      (op (car sequence)
+          (accumulate op initial (cdr sequence)))))
+;(define (map p sequence)
+;  (accumulate (lambda (x y) (cons (p x) y)) nil sequence))
+(define (append seq1 seq2)
+  (accumulate cons seq2 seq1))
+(define (length sequence)
+  (accumulate (lambda (x y) (+ 1 y)) 0 sequence))
+
+(define (horner-eval x coefficient-sequence)
+  (accumulate (lambda (this-coeff higher-terms) (+ this-coeff (* x higher-terms)))
+              0
+              coefficient-sequence))
+
+(define (count-leaves t)
+  (accumulate + 0 (map (lambda (x) (if (pair? x) (count-leaves x) 1)) t)))
+
+(define (accumulate-n op init seqs)
+  (if (null? (car seqs))
+      nil
+      (cons (accumulate op init (map (lambda (x) (car x)) seqs))
+            (accumulate-n op init (map (lambda (x) (cdr x)) seqs)))))
+
+(define (dot-product v w)
+  (accumulate + 0 (map * v w)))
+(define (matrix-*-vector m v)
+  (map (lambda (x) (dot-product x v)) m))
+(define (transpose mat)
+  (accumulate-n cons nil mat))
+(define (matrix-*-matrix m n)
+  (let ((cols (transpose n)))
+    (map (lambda (row) (map (lambda (col) (dot-product row col)) cols)) m)))
+
+; (/ 1 (/ 2 (/ 3 1))) = 3/2
+; (/ (/ (/ 1 1) 2) 3) = 1/6
+; (list 1 (list 2 (list 3 nil))) = (1 (2 (3 ())))
+; (list (list (list nil 1) 2) 3) = (((() 1) 2) 3)
+; op should satisfy the commutative property to guarantee that fold-right and fold-left will produce the same values for any sequence
+
+;(define (reverse sequence)
+;  (fold-right (lambda (x y) (append y (list x))) nil sequence))
+;(define (reverse sequence)
+;  (fold-left (lambda (y x) (cons x y)) nil sequence))
+
+(define (enumerate-interval low high)
+  (if (> low high)
+      nil
+      (cons low (enumerate-interval (+ low 1) high))))
+(define (flatmap proc seq)
+  (accumulate append nil (map proc seq)))
+(define (unique-pairs n)
+  (flatmap (lambda (i)
+             (map (lambda (j) (list i j))
+                  (enumerate-interval 1 (- i 1))))
+           (enumerate-interval 1 n)))
+(define (divides? a b) (= (remainder b a) 0))
+(define (find-divisor n test-divisor)
+  (cond ((> (square test-divisor) n) n)
+        ((divides? test-divisor n) test-divisor)
+        (else (find-divisor n (+ test-divisor 1)))))
+(define (smallest-divisor n) (find-divisor n 2))
+(define (prime? n)
+  (= n (smallest-divisor n)))
+(define (make-pair-sum pair)
+  (list (car pair) (cadr pair) (+ (car pair) (cadr pair))))
+(define (prime-sum? pair)
+  (prime? (+ (car pair) (cadr pair))))
+(define (prime-sum-pairs n)
+  (map make-pair-sum (filter prime-sum? (unique-pairs n))))
+
+(define (unique-triples n)
+  (flatmap (lambda (i)
+             (flatmap (lambda (j)
+                        (map (lambda (k) (list i j k))
+                             (enumerate-interval 1 (- i 2))))
+                      (enumerate-interval 1 (- i 1))))
+           (enumerate-interval 1 n)))
+(define (sum? triple s)
+  (= (+ (car triple) (cadr triple) (caddr triple)) s))
+(define (sum-triples n s)
+  (filter (lambda (triple) (sum? triple s)) (unique-triples n)))
+
+(define empty-board nil)
+(define (adjoin-position new-row k rest-of-queens) (cons new-row rest-of-queens))
+(define (safe? k positions)
+  (define (safe new-row col positions)
+    (cond ((null? positions) true)
+          ((or (= new-row (car positions)) (= (+ new-row (- k col)) (car positions)) (= (- new-row (- k col)) (car positions))) false)
+          (else (safe new-row (- col 1) (cdr positions)))))
+  (safe (car positions) (- k 1) (cdr positions)))
+
+; This interchange makes the program run slowly because instead of finding the ways to place k queens for k=1 to k=8 just once,
+; it must find them 8 times for k=7, 8*7 times for k=6 since each of those 8 times must find k=6 7 times, and so on...
+; Therefore the total number of times that queen-cols runs, which can be viewed as the number of nodes in the recursion
+; tree, is the sum of 1+8+8*7+...+8!, which is theta(8!)
+; If we estimate that the new queen-cols takes about the same amount of time to run as the original queen-cols, which is reasonable
+; since the only two things that changed are that now enumerate-interval gets called once instead of k times and queen-cols gets called
+; k times instead of once, then we can estimate that it will take 8! T for Louis's program to solve the eight-queens puzzle
+
+;(define (up-split painter n)
+;  (if (= n 0)
+;      painter
+;      (let ((smaller (up-split painter (- n 1))))
+;        (below painter (beside smaller smaller)))))
+
+(define (split large-op smalls-op)
+  (define (recur painter n)
+    (if (= n 0)
+        painter
+        (let ((smaller (recur painter (- n 1))))
+          (large-op painter (smalls-op smaller smaller)))))
+  recur)
+
+(define (make-vect x y) (cons x y))
+(define (xcor-vect v) (car v))
+(define (ycor-vect v) (cdr v))
+(define (add-vect v w)
+  (make-vect (+ (xcor-vect v) (xcor-vect w)) (+ (ycor-vect v) (ycor-vect w))))
+(define (sub-vect v w)
+  (make-vect (- (xcor-vect v) (xcor-vect w)) (- (ycor-vect v) (ycor-vect w))))
+(define (scale-vect s v)
+  (make-vect (* s (xcor-vect v)) (* s (ycor-vect v))))
+
+; For first make-frame:
+;(define (origin-frame f) (car f))
+;(define (edge1-frame f) (cadr f))
+;(define (edge2-frame f) (caddr f))
+; For second make-frame:
+(define (origin-frame f) (car f))
+(define (edge1-frame f) (cadr f))
+(define (edge2-frame f) (cddr f))
+
+(define (make-segment start end) (cons start end))
+(define (start-segment s) (car s))
+(define (end-segment s) (cdr s))
+
+;(define outline
+;  (segments->painter (list (make-segment (make-vect 0.0 0.0) (make-vect 0.0 1.0))
+;                           (make-segment (make-vect 0.0 1.0) (make-vect 1.0 1.0))
+;                           (make-segment (make-vect 1.0 1.0) (make-vect 1.0 0.0))
+;                           (make-segment (make-vect 1.0 0.0) (make-vect 0.0 0.0)))))
+;
+;(define x
+;  (segments->painter (list (make-segment (make-vect 0.0 0.0) (make-vect 1.0 1.0))
+;                           (make-segment (make-vect 0.0 1.0) (make-vect 1.0 0.0)))))
+;
+;(define diamond
+;  (segments->painter (list (make-segment (make-vect 0.0 0.5) (make-vect 0.5 1.0))
+;                           (make-segment (make-vect 0.5 1.0) (make-vect 1.0 0.5))
+;                           (make-segment (make-vect 1.0 0.5) (make-vect 0.5 0.0))
+;                           (make-segment (make-vect 0.5 0.0) (make-vect 0.0 0.5)))))
+;
+;(define wave
+;  (segments->painter (list (make-segment (make-vect 0.4 1.0) (make-vect 0.3 0.85))
+;                           (make-segment (make-vect 0.3 0.85) (make-vect 0.4 0.7))
+;                           (make-segment (make-vect 0.4 0.7) (make-vect 0.38 0.68))
+;                           (make-segment (make-vect 0.38 0.68) (make-vect 0.3 0.7))
+;                           (make-segment (make-vect 0.3 0.7) (make-vect 0.2 0.6))
+;                           (make-segment (make-vect 0.2 0.6) (make-vect 0.0 0.75))
+;                           
+;                           (make-segment (make-vect 0.6 1.0) (make-vect 0.7 0.85))
+;                           (make-segment (make-vect 0.7 0.85) (make-vect 0.6 0.7))
+;                           (make-segment (make-vect 0.6 0.7) (make-vect 0.62 0.68))
+;                           (make-segment (make-vect 0.62 0.68) (make-vect 0.7 0.7))
+;                           (make-segment (make-vect 0.7 0.7) (make-vect 1.0 0.4))
+;                           
+;                           (make-segment (make-vect 0.0 0.65) (make-vect 0.2 0.5))
+;                           (make-segment (make-vect 0.2 0.5) (make-vect 0.3 0.6))
+;                           (make-segment (make-vect 0.3 0.6) (make-vect 0.2 0.0))
+;                           
+;                           (make-segment (make-vect 0.4 0.0) (make-vect 0.5 0.3))
+;                           (make-segment (make-vect 0.5 0.3) (make-vect 0.6 0.0))
+;                           
+;                           (make-segment (make-vect 1.0 0.3) (make-vect 0.7 0.6))
+;                           (make-segment (make-vect 0.7 0.6) (make-vect 0.8 0.0)))))
+
+;(define (flip-horiz painter)
+;  (transform-painter painter
+;                     (make-vect 1.0 0.0)
+;                     (make-vect 0.0 0.0)
+;                     (make-vect 1.0 1.0)))
+;(define (rotate180 painter)
+;  (transform-painter painter
+;                     (make-vect 1.0 1.0)
+;                     (make-vect 0.0 1.0)
+;                     (make-vect 1.0 0.0)))
+;(define (rotate270 painter)
+;  (transform-painter painter
+;                     (make-vect 0.0 1.0)
+;                     (make-vect 0.0 0.0)
+;                     (make-vect 1.0 1.0)))
+
+;(define (below painter1 painter2)
+;  (let ((split-point (make-vect 0.0 0.5)))
+;    (let ((paint-bottom
+;           (transform-painter
+;            painter1
+;            (make-vect 0.0 0.0)
+;            (make-vect 1.0 0.0)
+;            split-point))
+;          (paint-top
+;           (transform-painter
+;            painter2
+;            split-point
+;            (make-vect 1.0 0.5)
+;            (make-vect 0.0 1.0))))
+;      (lambda (frame)
+;        (paint-bottom frame)
+;        (paint-top frame)))))
+;(define (below painter1 painter2)
+;  (rotate90 (beside (rotate270 painter1) (rotate270 painter2))))
+
+;(define wave
+;  (segments->painter (list (make-segment (make-vect 0.4 1.0) (make-vect 0.3 0.85))
+;                           (make-segment (make-vect 0.3 0.85) (make-vect 0.4 0.7))
+;                           (make-segment (make-vect 0.4 0.7) (make-vect 0.38 0.68))
+;                           (make-segment (make-vect 0.38 0.68) (make-vect 0.3 0.7))
+;                           (make-segment (make-vect 0.3 0.7) (make-vect 0.2 0.6))
+;                           (make-segment (make-vect 0.2 0.6) (make-vect 0.0 0.75))
+;                           
+;                           (make-segment (make-vect 0.6 1.0) (make-vect 0.7 0.85))
+;                           (make-segment (make-vect 0.7 0.85) (make-vect 0.6 0.7))
+;                           (make-segment (make-vect 0.6 0.7) (make-vect 0.62 0.68))
+;                           (make-segment (make-vect 0.62 0.68) (make-vect 0.7 0.7))
+;                           (make-segment (make-vect 0.7 0.7) (make-vect 1.0 0.4))
+;
+;                           (make-segment (make-vect 0.45 0.85) (make-vect 0.5 0.8))
+;                           (make-segment (make-vect 0.5 0.8) (make-vect 0.55 0.85))
+;                           
+;                           (make-segment (make-vect 0.0 0.65) (make-vect 0.2 0.5))
+;                           (make-segment (make-vect 0.2 0.5) (make-vect 0.3 0.6))
+;                           (make-segment (make-vect 0.3 0.6) (make-vect 0.2 0.0))
+;                           
+;                           (make-segment (make-vect 0.4 0.0) (make-vect 0.5 0.3))
+;                           (make-segment (make-vect 0.5 0.3) (make-vect 0.6 0.0))
+;                           
+;                           (make-segment (make-vect 1.0 0.3) (make-vect 0.7 0.6))
+;                           (make-segment (make-vect 0.7 0.6) (make-vect 0.8 0.0)))))
+;(define (corner-split painter n)
+;  (if (= n 0)
+;      painter
+;      (let ((up (up-split painter (- n 1)))
+;            (right (right-split painter (- n 1)))
+;            (corner (corner-split painter (- n 1))))
+;        (beside (below painter up)
+;                (below right corner)))))
+;(define (square-limit painter n)
+;  (let ((combine4 (square-of-four flip-vert rotate180
+;                                  identity flip-horiz)))
+;    (combine4 (corner-split painter n))))

@@ -1,8 +1,0 @@
-#lang sicp
-
-(define (map p sequence)
-  (accumulate (lambda (x y) x) nil sequence))
-(define (append seq1 seq2)
-  (accumulate cons seq1 seq2))
-(define (length sequence)
-  (accumulate + 0 sequence))

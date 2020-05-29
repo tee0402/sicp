@@ -4,6 +4,8 @@ Everything is #t except #f
 Consequent in cond may be a sequence of expressions, but consequent and alternative in if can only be a single expression
 If and/or evaluates to true, the last evaluated true value is returned
 Sometimes let can be replaced by defines: the difference is that the scope of let is well-defined
+The definition of a function means that (lambda (x) (f x)) is precisely f
+cons stands for "construct", car stands for "Contents of Address part of Register", cdr stands for "Contents of Decrement part of Register"
 
 (define <name> <value>)
 
@@ -20,8 +22,8 @@ Sometimes let can be replaced by defines: the difference is that the scope of le
 (< <e1> <e2>)
 (= <e1> <e2>)
 (> <e1> <e2>)
-(and <e1>...<en>)
-(or <e1>...<en>)
+(and <e1> ... <en>)
+(or <e1> ... <en>)
 (not <e>)
 
 (lambda (<formal parameters>) <body>)
@@ -32,7 +34,7 @@ Sometimes let can be replaced by defines: the difference is that the scope of le
       (<varn> <expn>))
   <body>)
 is the same as
-((lambda (<var1>...<varn>)
+((lambda (<var1> ... <varn>)
    <body>)
  <exp1>
  ...
@@ -40,4 +42,33 @@ is the same as
 
 (newline)
 (display <value>)
-(error <exp1>...<expn>)
+(error <exp1> ... <expn>)
+
+(cons <car> <cdr>)
+(car <cons>)
+(cdr <cons>)
+(list <a1> <a2> ... <an>) = (cons <a1> (cons <a2> ... (cons <an> nil)))
+(cadr <arg>) = (car (cdr <arg>))
+(null? <arg>)
+
+Dotted-tail notation (for arbitrary numbers of arguments):
+(define (f x y . z) <body>) = (define f (lambda (x y . z) <body>))
+If (f 1 2 3 4 5 6) is evaluated, z will be the list (3 4 5 6)
+(define (g . w) <body>) = (define g (lambda w <body>))
+
+(map + (list 1 2 3) (list 40 50 60) (list 700 800 900))
+(741 852 963)
+(for-each <proc> <items>) applies proc to each item in items and does not return anything
+(pair? <arg>)
+
+Semicolons introduce comments: everything from the semicolon to the end of the line is ignored by the interpreter
+
+Single quotes quote the next object, double quotes enclose character strings
+'(a b c) = (quote (a b c))
+The interpreter prints '(a b c) but evaluates it as (quote (a b c))
+
+(eq? <e1> <e2>) determines equality for symbols
+(equal? <e1> <e2>) determines deep equality for list structures
+(number? <arg>)
+(symbol? <arg>)
+(=number? <exp> <num>) = (and (number? exp) (= exp num))
