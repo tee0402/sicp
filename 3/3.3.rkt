@@ -1,0 +1,377 @@
+#lang sicp
+
+; z is a new list but w is an alias of x which has been mutated
+; (b)
+; (b c d)
+
+; Evaluating (last-pair z) will make the interpreter go into an infinite loop
+
+; mystery reverses a list and returns it
+; Evaluating v would print (a): since v was not set! to the beginning of the reversed list, it still points to the same pair it pointed to,
+; which is now the last pair in the list
+; Evaluating w would print (d c b a)
+
+; For z1, the car of x is set to wow
+; For z2, the car of its car is set to wow
+
+; (count-pairs (list 'a 'b 'c)) returns 3
+; (define x (list 'a))
+; (count-pairs (cons x (cons 'b x))) returns 4
+; (define y (cons x x))
+; (count-pairs (cons y y)) returns 7
+; (count-pairs (make-cycle (list 'a 'b 'c))) never returns
+
+(define (make-pointer-set)
+  (let ((pointer-set '()))
+    (define (element-of-pointer-set? p)
+      (define (search p pointer-set)
+        (cond ((null? pointer-set) false)
+            ((eq? p (car pointer-set)) true)
+            (else (search p (cdr pointer-set)))))
+      (search p pointer-set))
+    (define (adjoin-pointer-set! p)
+      (set! pointer-set (cons p pointer-set)))
+    (define (dispatch m)
+      (cond ((eq? m 'element-of-pointer-set?) element-of-pointer-set?)
+            ((eq? m 'adjoin-pointer-set!) adjoin-pointer-set!)
+            (else (error "Undefined operation: MAKE-POINTER-SET" m))))
+    dispatch))
+(define (count-pairs x)
+  (let ((counted-pointer-set (make-pointer-set)))
+    (define (count x)
+      (if (or (not (pair? x)) ((counted-pointer-set 'element-of-pointer-set?) x))
+          0
+          (begin ((counted-pointer-set 'adjoin-pointer-set!) x)
+                 (+ (count (car x)) (count (cdr x)) 1))))
+    (count x)))
+
+;(define (check-cycle z)
+;  (let ((visited-pointer-set (make-pointer-set)))
+;    (define (check x)
+;      (cond ((null? x) false)
+;            (((visited-pointer-set 'element-of-pointer-set?) x) true)
+;            (else ((visited-pointer-set 'adjoin-pointer-set!) x)
+;                  (check (cdr x)))))
+;    (check z)))
+
+(define (check-cycle z)
+  (define (seen-this-before? pair list length-to-check)
+    (cond ((= length-to-check 0) false)
+          ((eq? pair list) true)
+          (else (seen-this-before? pair (cdr list) (- length-to-check 1)))))
+  (define (check x length-to-check)
+    (cond ((null? x) false)
+          ((seen-this-before? x z length-to-check) true)
+          (else (check (cdr x) (+ length-to-check 1)))))
+  (check z 0))
+
+; Like in Exercise 3.11, cons is a message-passing procedure which uses local state and internal definitions
+; But unlike acc and acc2 which do not share the same local state, the local state of z is made up of the dispatch procedure object of x,
+; which has access to the local state of x
+
+; The queue representation is interpreted as a list containing the queue and the final item in the queue
+; Therefore simply taking the front pointer will give us the queue
+;(define (front-ptr queue) (car queue))
+;(define (print-queue queue) (front-ptr queue))
+
+(define (make-queue)
+  (let ((front-ptr '())
+        (rear-ptr '()))
+    (define (set-front-ptr! item)
+      (set! front-ptr item))
+    (define (set-rear-ptr! item)
+      (set! rear-ptr item))
+    (define (empty-queue?)
+      (null? front-ptr))
+    (define (front-queue)
+      (if (empty-queue?)
+          (error "FRONT called with an empty queue" dispatch)
+          (car front-ptr)))
+    (define (insert-queue! item)
+      (let ((new-pair (cons item '())))
+        (cond ((empty-queue?)
+               (set-front-ptr! new-pair)
+               (set-rear-ptr! new-pair)
+               dispatch)
+              (else
+               (set-cdr! rear-ptr new-pair)
+               (set-rear-ptr! new-pair)
+               dispatch))))
+    (define (delete-queue!)
+      (cond ((empty-queue?)
+             (error "DELETE! called with an empty queue" dispatch))
+            (else (set-front-ptr! (cdr front-ptr))
+                  dispatch)))
+    (define (dispatch m)
+      (cond ((eq? m 'empty-queue?) empty-queue?)
+            ((eq? m 'front-queue) front-queue)
+            ((eq? m 'insert-queue!) insert-queue!)
+            ((eq? m 'delete-queue!) delete-queue!)
+            (else (error "Undefined operation: MAKE-QUEUE" m))))
+    dispatch))
+
+(define (make-node item prev next) (list item prev next))
+(define (item node) (car node))
+(define (prev node) (cadr node))
+(define (next node) (caddr node))
+(define (set-item! node item) (set-car! node item))
+(define (set-prev! node prev) (set-car! (cdr node) prev))
+(define (set-next! node next) (set-car! (cddr node) next))
+(define (front-ptr deque) (car deque))
+(define (rear-ptr deque) (cdr deque))
+(define (set-front-ptr! deque item)
+  (set-car! deque item))
+(define (set-rear-ptr! deque item)
+  (set-cdr! deque item))
+(define (make-deque) (cons '() '()))
+(define (empty-deque? deque)
+  (null? (front-ptr deque)))
+(define (front-deque deque)
+  (if (empty-deque? deque)
+      (error "FRONT called with an empty deque" deque)
+      (item (front-ptr deque))))
+(define (rear-deque deque)
+  (if (empty-deque? deque)
+      (error "REAR called with an empty deque" deque)
+      (item (rear-ptr deque))))
+(define (front-insert-deque! deque item)
+  (let ((new-node (make-node item '() (front-ptr deque))))
+    (cond ((empty-deque? deque)
+           (set-front-ptr! deque new-node)
+           (set-rear-ptr! deque new-node)
+           deque)
+          (else
+           (set-prev! (front-ptr deque) new-node)
+           (set-front-ptr! deque new-node)
+           deque))))
+(define (rear-insert-deque! deque item)
+  (let ((new-node (make-node item (rear-ptr deque) '())))
+    (cond ((empty-deque? deque)
+           (set-front-ptr! deque new-node)
+           (set-rear-ptr! deque new-node)
+           deque)
+          (else
+           (set-next! (rear-ptr deque) new-node)
+           (set-rear-ptr! deque new-node)
+           deque))))
+(define (one-item-deque? deque)
+  (eq? (front-ptr deque) (rear-ptr deque)))
+(define (front-delete-deque! deque)
+  (cond ((empty-deque? deque)
+         (error "FRONT-DELETE! called with an empty deque" deque))
+        (else (if (one-item-deque? deque)
+                  (set-rear-ptr! deque '())
+                  (set-prev! (next (front-ptr deque)) '()))
+              (set-front-ptr! deque (next (front-ptr deque)))
+              deque)))
+(define (rear-delete-deque! deque)
+  (cond ((empty-deque? deque)
+         (error "REAR-DELETE! called with an empty deque" deque))
+        (else (if (one-item-deque? deque)
+                  (set-front-ptr! deque '())
+                  (set-next! (prev (rear-ptr deque)) '()))
+              (set-rear-ptr! deque (prev (rear-ptr deque)))
+              deque)))
+
+;(define (assoc key records same-key?)
+;  (cond ((null? records) false)
+;        ((same-key? key (caar records)) (car records))
+;        (else (assoc key (cdr records) same-key?))))
+;(define (make-table same-key?)
+;  (let ((local-table (list '*table*)))
+;    (define (lookup key-1 key-2)
+;      (let ((subtable
+;             (assoc key-1 (cdr local-table) same-key?)))
+;        (if subtable
+;            (let ((record
+;                   (assoc key-2 (cdr subtable) same-key?)))
+;              (if record (cdr record) false))
+;            false)))
+;    (define (insert! key-1 key-2 value)
+;      (let ((subtable
+;             (assoc key-1 (cdr local-table) same-key?)))
+;        (if subtable
+;            (let ((record
+;                   (assoc key-2 (cdr subtable) same-key?)))
+;              (if record
+;                  (set-cdr! record value)
+;                  (set-cdr! subtable
+;                            (cons (cons key-2 value)
+;                                  (cdr subtable)))))
+;            (set-cdr! local-table
+;                      (cons (list key-1 (cons key-2 value))
+;                            (cdr local-table)))))
+;      'ok)
+;    (define (dispatch m)
+;      (cond ((eq? m 'lookup-proc) lookup)
+;            ((eq? m 'insert-proc!) insert!)
+;            (else (error "Unknown operation: TABLE" m))))
+;    dispatch))
+
+;(define (lookup keys table)
+;  (let ((rest-of-keys (cdr keys)))
+;    (let ((lookup-record? (null? rest-of-keys)))
+;      (let ((record-or-subtable (assoc (car keys) (cdr table) lookup-record?)))
+;        (if record-or-subtable
+;            (if lookup-record?
+;                (cdr record-or-subtable)
+;                (lookup rest-of-keys record-or-subtable))
+;            false)))))
+; Since there is no way to distinguish between a subtable and a record with a value that is a list structure, we assume that a
+; record can only contain values that are not list structures
+(define (assoc key records lookup-record?)
+  (cond ((null? records) false)
+        ((and (or (and lookup-record? (not (pair? (cdar records))))
+                  (and (not lookup-record?) (pair? (cdar records))))
+              (equal? key (caar records)))
+         (car records))
+        (else (assoc key (cdr records) lookup-record?))))
+;(define (insert! keys value table)
+;  (let ((rest-of-keys (cdr keys)))
+;    (let ((insert-record? (null? rest-of-keys)))
+;      (let ((record-or-subtable (assoc (car keys) (cdr table) insert-record?)))
+;        (if record-or-subtable
+;            (if insert-record?
+;                (set-cdr! record-or-subtable value)
+;                (insert! rest-of-keys value record-or-subtable))
+;            (if insert-record?
+;                (set-cdr! table
+;                          (cons (cons (car keys) value)
+;                                (cdr table)))
+;                (let ((new-table (list (car keys))))
+;                  (set-cdr! table
+;                            (cons new-table
+;                                  (cdr table)))
+;                  (insert! rest-of-keys value new-table)))))))
+;  'ok)
+
+(define (make-tree key value left right) (list key value left right))
+(define (key tree) (car tree))
+(define (value tree) (cadr tree))
+(define (left-branch tree) (caddr tree))
+(define (right-branch tree) (cadddr tree))
+(define (set-value! tree value) (set-car! (cdr tree) value))
+(define (set-left-branch! tree left) (set-car! (cddr tree) left))
+(define (set-right-branch! tree right) (set-car! (cdddr tree) right))
+(define (make-table k v) (make-tree k v '() '()))
+(define (lookup k table)
+  (cond ((null? table) false)
+        ((equal? k (key table)) (value table))
+        ((< k (key table)) (lookup k (left-branch table)))
+        ((> k (key table)) (lookup k (right-branch table)))))
+(define (insert! k v table)
+  (cond ((equal? k (key table)) (set-value! table v))
+        ((< k (key table))
+         (if (null? (left-branch table))
+             (set-left-branch! table (make-tree k v '() '()))
+             (insert! k v (left-branch table))))
+        ((> k (key table))
+         (if (null? (right-branch table))
+             (set-right-branch! table (make-tree k v '() '()))
+             (insert! k v (right-branch table)))))
+  'ok)
+
+; memo-fib computes the nth fibonacci number in a number of steps proportional to n because each fibonacci number is computed only once
+; Beginning with 0 and 1, each computed fibonacci number is stored into a table
+; The computation for the next fibonacci number simply involves adding the previous two from the table and storing the new one into the table
+; The scheme would not work with (memoize fib) because it will call (fib (- n 1)) and (fib (- n 2)), which are non-memoized versions of fib
+
+;(define (or-gate o1 o2 output)
+;  (define (or-action-procedure)
+;    (let ((new-value (logical-or (get-signal o1) (get-signal o2))))
+;      (after-delay or-gate-delay (lambda () (set-signal! output new-value)))))
+;  (add-action! o1 or-action-procedure)
+;  (add-action! o2 or-action-procedure)
+;  'ok)
+
+;(define (or-gate o1 o2 output)
+;  (let ((c (make-wire)) (d (make-wire)) (e (make-wire)))
+;    (inverter o1 c)
+;    (inverter o2 d)
+;    (and-gate c d e)
+;    (inverter e output)
+;    'ok))
+; or-gate-delay = and-gate-delay + 2 * inverter-delay
+
+;(define (ripple-carry-adder ak bk sk c)
+;  (define (iter ak bk sk c-out)
+;    (if (null? ak)
+;        'ok
+;        (let ((c-in (make-wire)))
+;          (full-adder (car ak) (car bk) c-in (car sk) c-out)
+;          (iter (cdr ak) (cdr bk) (cdr sk) c-in))))
+;  (let ((c-in (make-wire)))
+;    (full-adder (car ak) (car bk) c-in (car sk) c)
+;    (iter (cdr ak) (cdr bk) (cdr sk) c-in)))
+; half-adder-delay for S = max(and-gate-delay + inverter-delay, or-gate-delay) + and-gate-delay
+; half-adder-delay for C = and-gate-delay
+; half-adder-delay for S is always larger than half-adder-delay for C
+; full-adder-delay for S
+; = 2 * half-adder-delay for S
+; = 2 * (max(and-gate-delay + inverter-delay, or-gate-delay) + and-gate-delay)
+; full-adder-delay for C
+; = half-adder-delay for S + half-adder-delay for C + or-gate-delay
+; = max(and-gate-delay + inverter-delay, or-gate-delay) + 2 * and-gate-delay + or-gate-delay
+; If and-gate-delay + inverter-delay is larger than or-gate-delay, full-adder-delay for S is larger than full-adder-delay for C, otherwise they are equal
+; ripple-carry-adder-delay for S
+; = (n - 1) * full-adder-delay for C + full-adder-delay for S
+; = (n - 1) * (max(and-gate-delay + inverter-delay, or-gate-delay) + 2 * and-gate-delay + or-gate-delay)
+;   + 2 * (max(and-gate-delay + inverter-delay, or-gate-delay) + and-gate-delay)
+; = (n + 1) * max(and-gate-delay + inverter-delay, or-gate-delay) + 2n * and-gate-delay + (n - 1) * or-gate-delay
+; ripple-carry-adder-delay for C
+; = n * full-adder-delay for C
+; = n * (max(and-gate-delay + inverter-delay, or-gate-delay) + 2 * and-gate-delay + or-gate-delay)
+; = n * max(and-gate-delay + inverter-delay, or-gate-delay) + 2n * and-gate-delay + n * or-gate-delay
+; The delay needed to obtain the complete output from an n-bit ripple-carry adder depends on whether and-gate-delay + inverter-delay is larger than or-gate-delay:
+; If so, then it is (n + 1) * max(and-gate-delay + inverter-delay, or-gate-delay) + 2n * and-gate-delay + (n - 1) * or-gate-delay
+; Otherwise, it is n * max(and-gate-delay + inverter-delay, or-gate-delay) + 2n * and-gate-delay + n * or-gate-delay
+
+; (probe 'sum sum)
+; probe action procedure is added to sum but not run, so no output
+; (probe 'carry carry)
+; probe action procedure is added to carry but not run, so no output
+; (half-adder input-1 input-2 sum carry)
+; "ok"
+; or and and action procedures are added to input-1 and input-2 but not run, meaning set-signal! on carry and d will not be added to the agenda and run after a delay,
+; but that is okay because input-1 and input-2 are 0 at this point, so set-signal! would not have changed those values anyways
+; Note that the invert action procedure is added to carry but not run, and that and action procedures are added to d and e but not run
+; (set-signal! input-1 1)
+; "done"
+; The signal of input-1 is set to 1 and its and and or action procedures are run, in that order
+; Two items are added to the agenda: carry is set to 0 at time 3 and d is set to 1 at time 5
+; (propagate)
+; "done"
+; set-signal! of carry to 0 at time 3 does not change its value
+; d is set to 1 at time 5 and its and action procedure is run, adding one item to the agenda: sum is set to 0 at time 8
+; set-signal! of sum to 0 at time 8 does not change its value
+; (set-signal! input-2 1)
+; "done"
+; The signal of input-2 is set to 1 and its and and or action procedures are run, in that order
+; Two items are added to the agenda: carry is set to 1 at time 11 and d is set to 1 at time 13
+; (propagate)
+; "carry 11 New-value = 1"
+; "done"
+; carry is set to 1 at time 11 and its invert and probe action procedures are run, in that order
+; The invert action procedure adds one item to the agenda: e is set to 0 at time 13
+; The probe action procedure displays the new value of carry at time 11
+; set-signal! of d to 1 at time 13 does not change its value
+; set-signal! of e to 0 at time 13 does not change its value
+; As we can see, the program produced the incorrect result because when the half-adder was constructed, the invert action procedure was added to carry but not run,
+; leading to e not being initialized to 1 and producing the wrong sum
+; The default initial signal value of 0 combined with the presence of inverters make an initial signal value of 1 possible and initialization necessary
+
+; We have a1 with a signal value of 0 and a2 with a signal value of 1, both with and action procedures, as well as output with a signal value of 0
+; (set-signal! a1 1)
+; The signal of a1 is set to 1 and its and action procedure is run, adding one item to the agenda: output is set to 1 at time 3
+; (set-signal! a2 0)
+; The signal of a2 is set to 0 and its and action procedure is run, adding one item to the agenda: output is set to 0 at time 3
+; (propagate)
+; output is set to 0 at time 3
+; output is set to 1 at time 3
+; As we can see, LIFO (or FILO) produced the incorrect result because a1 ran its action procedure with incomplete inputs and calculated the wrong output, but its set
+; was run last, so the incorrect output was set instead of being overwritten by the set from a2, which calculated the correct output because it had complete inputs
+; This only happens when two changes occur at the same time, causing them to be in the same time segment and raising issues of concurrency
+; The requirement of FIFO (or LILO) within a time segment is due to the implementation of set-signal!, which dictates that when an input changes, the new output is
+; calculated immediately but set after a delay. This implementation accurately depicts how a digital circuit behaves but can create race conditions because reading
+; the inputs and writing the outputs are separate operations occurring at separate times instead of being a single atomic operation, creating the possibility of
+; orderings which produce incorrect results

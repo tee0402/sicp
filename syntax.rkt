@@ -1,24 +1,31 @@
 #lang sicp
 
 Everything is #t except #f
-Consequent in cond may be a sequence of expressions, but consequent and alternative in if can only be a single expression
 If and/or evaluates to true, the last evaluated true value is returned
 Sometimes let can be replaced by defines: the difference is that the scope of let is well-defined
 The definition of a function means that (lambda (x) (f x)) is precisely f
 cons stands for "construct", car stands for "Contents of Address part of Register", cdr stands for "Contents of Decrement part of Register"
 All Lisp implementations have an internal type system, enabling predicates such as symbol? and number?
+In Scheme, the naming convention is to end predicate names with a ? and to end the names of operations that change values with a !
+In Scheme, symbols are shared, so eq? simply checks equality of pointers
 
 (define <name> <value>)
+can have only one expression as its value, evaluates and assigns it at definition
 
 (define (<name> <formal parameters>)
   <body>)
+can have multiple expressions in its body, does not evaluate them at definition
+When called, all expressions are evaluated and the value of the final expression is returned
 
 (cond (<p1> <e1>)
       (<p2> <e2>)
       ...
       (<pn> <en>))
+Each consequent can have multiple expressions
+All expressions are evaluated and the value of the final expression is returned
 
 (if <predicate> <consequent> <alternative>)
+Both the consequent and alternative can have only one expression
 
 (< <e1> <e2>)
 (= <e1> <e2>)
@@ -46,6 +53,7 @@ is the same as
 (error <exp1> ... <expn>)
 
 (cons <car> <cdr>)
+cons makes a new pair (creates room for two pointers) and sets the car and cdr pointers to <car> and <cdr> respectively
 (car <cons>)
 (cdr <cons>)
 (list <a1> <a2> ... <an>) = (cons <a1> (cons <a2> ... (cons <an> nil)))
@@ -68,10 +76,21 @@ Single quotes quote the next object, double quotes enclose character strings
 '(a b c) = (quote (a b c))
 The interpreter prints '(a b c) but evaluates it as (quote (a b c))
 
-(eq? <e1> <e2>) determines equality for symbols
+(eq? <e1> <e2>) determines equality for symbols (actually it determines equality of pointers, so it can test whether objects are shared)
 (equal? <e1> <e2>) determines deep equality for list structures
 (number? <arg>)
 (symbol? <arg>)
 (=number? <exp> <num>) = (and (number? exp) (= exp num))
 
 (apply <op> (list <a1> ... <an>)) = (<op> <a1> ... <an>)
+
+(set! <name> <new-value>)
+
+(begin <e1> <e2> ... <en>)
+Emulates a procedure body or cond consequent
+
+(set-car! <name> <new-car>)
+(set-cdr! <name> <new-cdr>)
+set! cannot replace set-car! and set-cdr! because only variables with names can be set!
+set-car! and set-cdr! “give a name” to the car and cdr of a pair
+On the other hand, set-car! and set-cdr! can be implemented in terms of set!
