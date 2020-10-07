@@ -375,3 +375,51 @@
 ; calculated immediately but set after a delay. This implementation accurately depicts how a digital circuit behaves but can create race conditions because reading
 ; the inputs and writing the outputs are separate operations occurring at separate times instead of being a single atomic operation, creating the possibility of
 ; orderings which produce incorrect results
+
+;(define (averager a b c)
+;  (let ((u (make-connector))
+;        (v (make-connector)))
+;    (adder a b u)
+;    (multiplier v c u)
+;    (constant 2 v)
+;    'ok))
+
+; Given b we cannot get the value of a because the multiplier requires at least two values to fill in the third value
+
+;(define (squarer a b)
+;  (define (process-new-value)
+;    (if (has-value? b)
+;        (if (< (get-value b) 0)
+;            (error "square less than 0: SQUARER"
+;                   (get-value b))
+;            (set-value! a (sqrt (get-value b)) me))
+;        (if (has-value? a)
+;            (set-value! b (square (get-value a)) me))))
+;  (define (process-forget-value)
+;    (forget-value! a me)
+;    (forget-value! b me)
+;    (process-new-value))
+;  (define (me request)
+;    (cond ((eq? request 'I-have-a-value) (process-new-value))
+;          ((eq? request 'I-lost-my-value) (process-forget-value))
+;          (else (error "Unknown request: SQUARER" request))))
+;  (connect a me)
+;  (connect b me)
+;  me)
+
+;(define (c- x y)
+;  (let ((z (make-connector)))
+;    (adder y z x)
+;    z))
+;(define (c* x y)
+;  (let ((z (make-connector)))
+;    (multiplier x y z)
+;    z))
+;(define (c/ x y)
+;  (let ((z (make-connector)))
+;    (multiplier y z x)
+;    z))
+;(define (cv x)
+;  (let ((z (make-connector)))
+;    (constant x z)
+;    z))

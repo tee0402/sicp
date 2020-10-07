@@ -94,3 +94,10 @@ Emulates a procedure body or cond consequent
 set! cannot replace set-car! and set-cdr! because only variables with names can be set!
 set-car! and set-cdr! “give a name” to the car and cdr of a pair
 On the other hand, set-car! and set-cdr! can be implemented in terms of set!
+
+(parallel-execute <p1> ... <pk>) implemented in MIT Scheme creates new concurrent processes which run concurrently with the original process and returns a value
+which can be used to halt the new processes
+
+(delay <exp>) = (memo-proc (lambda () <exp>)) does not evaluate <exp> but creates a promise to evaluate it
+; (force <delayed-object>) evaluates <exp>: (define (force delayed-object) (delayed-object))
+(cons-stream <a> <b>) = (cons a (delay <b>))

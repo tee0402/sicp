@@ -1,0 +1,184 @@
+#lang sicp
+
+; Possible sequential orders: 123, 132, 213, 231, 312, 321
+; Possible sequential values:
+; $45: 123 and 213
+; $35: 132
+; $50: 231
+; $40: 312 and 321
+; Mary's two reads of balance being 4 and 5:
+; Possible interleaved orders (in addition to possible sequential orders): 1, 2, 3, 12, 13, 21, 23, 31, 32, 415, 514, 425, 524, 1425, 1524, 2415, 2514, 4125, 4215, 5124, 5214
+; Possible interleaved values:
+; $110: 1
+; $80: 2
+; $50: 3 and 2514
+; $90: 12 and 21
+; $55: 13 and 4125 and 4215
+; $40: 23 and 5124 and 5214
+; $60: 31 and 514 and 425
+; $30: 32 and 524
+; $45: 415
+; $65: 1425
+; $35: 1524 and 2415
+; Possible interleaved values (in addition to possible sequential values): $110, $80, $90, $55, $60, $30, $65
+
+; 101 and 121 will always remain as possibilities because those are the two sequential orders
+; 100 remains because P1 is not entirely serialized, so P2 can still occur between P1's two accesses of x and its setting of x
+
+; P1's two reads of x being 3 and 4 and P2's three reads of x being 5, 6, and 7:
+; Possible interleaved orders: 1, 2, 12, 21, 324, 5167, 5617
+; 100: P2 occurs between the accesses and set of P1
+; 1000: P1 occurs between the accesses and set of P2
+; 1000000: P1 sets x to 100 and then P2 sets x to x * x * x,
+;          P2 sets x to 1000 and then P1 sets x to x * x
+; 10000: P2 changes x from 10 to 1000 between the two times that P1 accesses x during the evaluation of (* x x),
+;        P1 changes x from 10 to 100 between the second and third time that P2 accesses x during the evaluation of (* x x x)
+; 100000: P1 changes x from 10 to 100 between the first and second time that P2 accesses x during the evaluation of (* x x x)
+; Only 1000000 remains if serialized
+
+; No because withdraw and deposit are serialized procedures which only have a single set, which is an atomic operation
+; This means that there is no inconsistent state within a running procedure that can be read, so all values that are read must be correct
+; Since there is no write based on the concurrent accesses to balance, which are themselves atomic operations, they already produce results of some sequential order
+; and there is no need for serialization
+
+; It is a safe change to make because both versions serialize withdraw and deposit, with the only difference being the first version creating a new serialized
+; procedure during each call
+
+; If the exchange processes are run sequentially, then the order of the balances is simply rearranged during each exchange, so the account balances should still be
+; $10, $20, and $30 in some order after any number of concurrent exchanges
+; With the first version of the exchange program, the sum of all balances will still be preserved after any number of concurrent exchanges because the reads and writes
+; that actually affect balance occur within withdraw and deposit, which are atomic operations within their own accounts, so there cannot be interleaving that creates
+; lost updates and money is conserved
+; The interleaving of steps within exchange creates the possibility of making the exchange a transfer because balances can be changed between accessing the first and
+; second balance, between calculating the difference and withdrawing, or between withdrawing and depositing, resulting in having and using the wrong difference after
+; such a change
+
+; There is no need to serialize both accounts for transfer because unlike exchange, the amount to be transferred is predetermined and always correct, and state changes
+; of each account only depend on the predetermined amount and not on the state of the other account
+
+; Louis is wrong because the serialized exchange would then call a withdraw in the same serialized set, which would cause a deadlock
+
+; In terms of mutexes
+(define (make-mutex)
+  (let ((cell (list false)))
+    (define (the-mutex m)
+      (cond ((eq? m 'acquire)
+             (if (test-and-set! cell)
+                 (the-mutex 'acquire))) ; retry
+            ((eq? m 'release) (clear! cell))))
+    the-mutex))
+;(define (clear! cell) (set-car! cell false))
+;(define (test-and-set! cell)
+;  (if (car cell) true (begin (set-car! cell true) false)))
+;(define (make-semaphore n)
+;  (let ((semaphore (make-mutex-list n)))
+;    (define (the-semaphore m)
+;      (cond ((eq? m 'acquire)
+;             (if (acquire semaphore)
+;                 (the-semaphore 'acquire)))
+;            ((eq? m 'release) (release semaphore))))
+;    the-semaphore))
+;(define (make-node item prev next) (list item prev next))
+;(define (item node) (car node))
+;(define (prev node) (cadr node))
+;(define (next node) (caddr node))
+;(define (set-item! node item) (set-car! node item))
+;(define (set-prev! node prev) (set-car! (cdr node) prev))
+;(define (set-next! node next) (set-car! (cddr node) next))
+;(define (make-dll) (list (make-node '() '() '())))
+;(define (rear-ptr dll) (car dll))
+;(define (set-rear-ptr! dll item) (set-car! dll item))
+;(define (rear-insert-dll! dll item)
+;  (let ((new-node (make-node item (rear-ptr dll) '())))
+;    (set-next! (rear-ptr dll) new-node)
+;    (set-rear-ptr! dll new-node)))
+;(define (make-mutex-list n)
+;  (define (iter n dll)
+;    (if (= n 0)
+;        dll
+;        (begin (rear-insert-dll! dll (make-mutex))
+;               (iter (- n 1) dll))))
+;  (iter n (make-dll)))
+;(define (all-acquired? semaphore) (null? (prev (rear-ptr semaphore))))
+;(define (acquire semaphore)
+;  (if (all-acquired? semaphore)
+;      true
+;      (begin ((item (rear-ptr semaphore)) 'acquire)
+;             (set-rear-ptr! semaphore (prev (rear-ptr semaphore)))
+;             false)))
+;(define (none-acquired? semaphore) (null? (next (rear-ptr semaphore))))
+;(define (release semaphore)
+;  (if (not (none-acquired? semaphore))
+;      (begin (set-rear-ptr! semaphore (next (rear-ptr semaphore)))
+;             ((item (rear-ptr semaphore)) 'release))))
+; In terms of atomic test-and-set! instructions
+(define (make-semaphore n)
+  (let ((semaphore (list 0)))
+    (define (the-semaphore m)
+      (cond ((eq? m 'acquire)
+             (if (test-and-set! semaphore n)
+                 (the-semaphore 'acquire)))
+            ((eq? m 'release) (clear! semaphore))))
+    the-semaphore))
+(define (clear! semaphore) (if (> (car semaphore) 0) (set-car! semaphore (- (car semaphore) 1))))
+(define (test-and-set! semaphore n)
+  (if (= (car semaphore) n) true (begin (set-car! semaphore (+ (car semaphore) 1)) false)))
+
+; The deadlock-avoidance method makes the resource acquisition process linear and eliminates circular dependence, similar to a traffic jam situation
+; Every time a process is blocked, it is blocked by a process that requires resources in the latter part of the chain, meaning that the process blocking it can finish
+; without needing the blocked process to finish first
+; If the process blocking it is itself blocked, we follow the logical train of thought and find the last process in the chain, which can clear the blockage once it finishes
+(define (make-serializer)
+  (let ((mutex (make-mutex)))
+    (lambda (p)
+      (define (serialized-p . args)
+        (mutex 'acquire)
+        (let ((val (apply p args)))
+          (mutex 'release)
+          val))
+      serialized-p)))
+(define (exchange account1 account2)
+  (let ((difference (- (account1 'balance)
+                       (account2 'balance))))
+    ((account1 'withdraw) difference)
+    ((account2 'deposit) difference)))
+(define make-id
+  (let ((id 0))
+    (lambda ()
+      (set! id (+ id 1))
+      id)))
+(define (make-account-and-serializer balance)
+  (define (withdraw amount)
+    (if (>= balance amount)
+        (begin (set! balance (- balance amount))
+               balance)
+        "Insufficient funds"))
+  (define (deposit amount)
+    (set! balance (+ balance amount))
+    balance)
+  (let ((id (make-id))
+        (balance-serializer (make-serializer)))
+    (define (dispatch m)
+      (cond ((eq? m 'withdraw) withdraw)
+            ((eq? m 'deposit) deposit)
+            ((eq? m 'balance) balance)
+            ((eq? m 'id) id)
+            ((eq? m 'serializer) balance-serializer)
+            (else (error "Unknown request: MAKE-ACCOUNT" m))))
+    dispatch))
+(define (serialized-exchange account1 account2)
+  (let ((id1 (account1 'id))
+        (id2 (account2 'id))
+        (serializer1 (account1 'serializer))
+        (serializer2 (account2 'serializer)))
+    (cond ((< id1 id2) ((serializer1 (serializer2 exchange)) account1 account2))
+          ((< id2 id1) ((serializer2 (serializer1 exchange)) account2 account1))
+          (else (error "Same account: SERIALIZED-EXCHANGE")))))
+
+; Process 1 wants to deposit half of Account A's balance into its beneficiary account
+; Process 1 acquires Account A, reads the balance and beneficiary account of Account A and tries to deposit into Account B
+; Process 2 wants to deposit half of Account B's balance into its beneficiary account
+; Process 2 acquires Account B, reads the balance and beneficiary account of Account B and tries to deposit into Account A
+; Process 1 acquired Account A and needs to acquire Account B, while Process 2 acquired Account B and needs to acquire Account A, so they are deadlocked
+; Deadlock can only be avoided by a serialized procedure which serializes all possible accounts from the outset
+; Therefore we must either place a more stringent restriction on concurrency or have some form of deadlock recovery

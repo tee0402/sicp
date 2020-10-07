@@ -376,18 +376,10 @@
 ; the inputs and writing the outputs are separate operations occurring at separate times instead of being a single atomic operation, creating the possibility of
 ; orderings which produce incorrect results
 
-(define (add-complex z1 z2)
-  (make-from-real-imag (+ (real-part z1) (real-part z2))
-                       (+ (imag-part z1) (imag-part z2))))
-
-(define (make-from-real-imag x y)
-  (define (dispatch op)
-    (cond ((eq? op 'real-part) x)
-          ((eq? op 'imag-part) y)
-          ((eq? op 'angle) (atan y x))
-          ((eq? op 'add-complex) (lambda (z) (make-from-real-imag (+ x (real-part z))
-                                                                  (+ y (imag-part z)))))
-          (else (error "Unknown op: MAKE-FROM-REAL-IMAG" op))))
-  dispatch)
-
-(((make-from-real-imag 1 2) 'add-complex) (make-from-real-imag 1 2))
+(define (averager a b c)
+  (let ((u (make-connector))
+        (v (make-connector)))
+    (adder a b u)
+    (multiplier v c u)
+    (constant 2 v)
+    'ok))

@@ -8,12 +8,6 @@ cons stands for "construct", car stands for "Contents of Address part of Registe
 All Lisp implementations have an internal type system, enabling predicates such as symbol? and number?
 In Scheme, the naming convention is to end predicate names with a ? and to end the names of operations that change values with a !
 In Scheme, symbols are shared, so eq? simply checks equality of pointers
-Primitive operations combine (inseparably) primitive data to create primitive data
-Compound data operations combine (separably) primitive or compound data to create compound data
-Compound procedures combine primitive and compound data operations
-This combination of operations can combine (inseparably) compound data of the same type to create compound data
-Generic procedures combine (inseparably) compound data of different types to create compound data
-Higher-order procedures combine compound procedures
 
 (define <name> <value>)
 can have only one expression as its value, evaluates and assigns it at definition
@@ -100,3 +94,9 @@ Emulates a procedure body or cond consequent
 set! cannot replace set-car! and set-cdr! because only variables with names can be set!
 set-car! and set-cdr! “give a name” to the car and cdr of a pair
 On the other hand, set-car! and set-cdr! can be implemented in terms of set!
+
+(parallel-execute <p1> ... <pk>) implemented in MIT Scheme creates new concurrent processes which run concurrently with the original process and returns a value
+which can be used to halt the new processes
+
+(delay <exp>) does not evaluate <exp> but creates a promise to evaluate it
+(force <promise>)

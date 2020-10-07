@@ -1,0 +1,112 @@
+#lang sicp
+
+(define (stream-car stream) (car stream))
+(define (stream-cdr stream) (force (cdr stream)))
+;(define (stream-map proc . argstreams)
+;  (if (stream-null? (car argstreams))
+;      the-empty-stream
+;      (cons-stream
+;       (apply proc (map stream-car argstreams))
+;       (apply stream-map
+;              (cons proc (map stream-cdr argstreams))))))
+
+(define (stream-enumerate-interval low high)
+  (if (> low high)
+      the-empty-stream
+      (cons-stream
+       low
+       (stream-enumerate-interval (+ low 1) high))))
+(define (stream-map proc s)
+  (if (stream-null? s)
+      the-empty-stream
+      (cons-stream (proc (stream-car s))
+                   (stream-map proc (stream-cdr s)))))
+(define (show x)
+  (display-line x)
+  x)
+(define (display-line x) (newline) (display x))
+(define (stream-ref s n)
+  (if (= n 0)
+      (stream-car s)
+      (stream-ref (stream-cdr s) (- n 1))))
+; (define x
+;   (stream-map show
+;               (stream-enumerate-interval 0 10)))
+; 0
+; x = (cons 0 (delay (stream-map show (stream-cdr (cons 0 (delay (stream-enumerate-interval 1 10)))))))
+; (stream-ref x 5)
+; 1
+; 2
+; 3
+; 4
+; 55
+; Since delay is memoized, stream-map and stream-enumerate-interval results from 1 to 5 are saved as they are computed
+; Our definition of x in the beginning allows us access to the memoizations through the delayed object in x, which contains the first stream-map
+; result which contains the delayed object containing the second stream-map result, and so on
+; The second time we stream-cdr through x, we just use the memoizations, so stream-map is not computed for 1 to 5 and they are not printed
+; (stream-ref x 7)
+; 6
+; 77
+
+(define (stream-filter pred stream)
+  (cond ((stream-null? stream) the-empty-stream)
+        ((pred (stream-car stream))
+         (cons-stream (stream-car stream)
+                      (stream-filter
+                       pred
+                       (stream-cdr stream))))
+        (else (stream-filter pred (stream-cdr stream)))))
+(define (display-stream s)
+  (stream-for-each display-line s))
+(define (stream-for-each proc s)
+  (if (stream-null? s)
+      'done
+      (begin (proc (stream-car s))
+             (stream-for-each proc (stream-cdr s)))))
+; (define sum 0)
+; sum = 0
+; (define (accum x) (set! sum (+ x sum)) sum)
+; sum = 0
+; Defines the sequence of the 1st to the 20th triangular number
+; (define seq
+;   (stream-map accum
+;               (stream-enumerate-interval 1 20)))
+; sum = 1
+; seq = (cons 1 (delay (stream-map accum (stream-cdr (cons 1 (delay (stream-enumerate-interval 2 20)))))))
+; (define y (stream-filter even? seq))
+; sum = 6
+; y = (cons 6 (delay (stream-filter even? (stream-cdr (cons 6 (delay (stream-map accum (stream-cdr (cons 3 (delay (stream-enumerate-interval 4 20)))))))))))
+; Since delay is memoized, stream-map will not be called again for 2 to 3 and they will not be added to sum again
+; (define z
+;   (stream-filter (lambda (x) (= (remainder x 5) 0))
+;                  seq))
+; sum = 10
+; z = (cons 10 (delay (stream-filter (lambda (x) (= (remainder x 5) 0)) (stream-cdr (cons 10 (delay (stream-map accum (stream-cdr (cons 4 (delay (stream-enumerate-interval 5 20)))))))))))
+; Since delay is memoized, stream-map will not be called again for 4 and it will not be added to sum again
+; (stream-ref y 7)
+; sum = 136
+; 136
+; Since delay is memoized, stream-map will not be called again for 5 to 16 and they will not be added to sum again
+; When the interpreter prints an evaluated value, it prints the value and then adds a new line
+; When display-line prints a value, it adds a new line and then prints the value
+; (display-stream z)
+; sum = 210
+; 
+; 10
+; 15
+; 45
+; 55
+; 105
+; 120
+; 190
+; 210done
+; The responses would differ if we did not memoize delay because (define z ...) would accumulate 2 to 3 again, (stream-ref y 7) would
+; accumulate 4 again, and (display-stream z) would accumulate 5 to 16 again
+
+(define (integers-starting-from n)
+  (cons-stream n (integers-starting-from (* n 2))))
+(define integers (integers-starting-from 1))
+(cons-stream 1 (integers-starting-from 2))
+(cons-stream 1 (cons-stream 2 (integers-starting-from 4)))
+
+(define double (cons-stream 1 (stream-map (lambda (x) (* x 2)) double)))
