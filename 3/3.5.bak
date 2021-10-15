@@ -2,13 +2,13 @@
 
 (define (stream-car stream) (car stream))
 (define (stream-cdr stream) (force (cdr stream)))
-;(define (stream-map proc . argstreams)
-;  (if (stream-null? (car argstreams))
-;      the-empty-stream
-;      (cons-stream
-;       (apply proc (map stream-car argstreams))
-;       (apply stream-map
-;              (cons proc (map stream-cdr argstreams))))))
+(define (stream-map proc . argstreams)
+  (if (stream-null? (car argstreams))
+      the-empty-stream
+      (cons-stream
+       (apply proc (map stream-car argstreams))
+       (apply stream-map
+              (cons proc (map stream-cdr argstreams))))))
 
 (define (stream-enumerate-interval low high)
   (if (> low high)
@@ -16,11 +16,11 @@
       (cons-stream
        low
        (stream-enumerate-interval (+ low 1) high))))
-(define (stream-map proc s)
-  (if (stream-null? s)
-      the-empty-stream
-      (cons-stream (proc (stream-car s))
-                   (stream-map proc (stream-cdr s)))))
+;(define (stream-map proc s)
+;  (if (stream-null? s)
+;      the-empty-stream
+;      (cons-stream (proc (stream-car s))
+;                   (stream-map proc (stream-cdr s)))))
 (define (show x)
   (display-line x)
   x)
@@ -103,10 +103,70 @@
 ; The responses would differ if we did not memoize delay because (define z ...) would accumulate 2 to 3 again, (stream-ref y 7) would
 ; accumulate 4 again, and (display-stream z) would accumulate 5 to 16 again
 
-(define (integers-starting-from n)
-  (cons-stream n (integers-starting-from (* n 2))))
-(define integers (integers-starting-from 1))
-(cons-stream 1 (integers-starting-from 2))
-(cons-stream 1 (cons-stream 2 (integers-starting-from 4)))
+; s produces the stream of powers of 2
 
-(define double (cons-stream 1 (stream-map (lambda (x) (* x 2)) double)))
+(define ones (cons-stream 1 ones))
+(define (add-streams s1 s2) (stream-map + s1 s2))
+(define integers
+  (cons-stream 1 (add-streams ones integers)))
+(define (mul-streams s1 s2) (stream-map * s1 s2))
+(define factorials
+  (cons-stream 1 (mul-streams factorials (stream-cdr integers))))
+
+(define (partial-sums s)
+  (cons-stream (stream-car s) (add-streams (stream-cdr s) (partial-sums s))))
+
+(define (scale-stream stream factor)
+  (stream-map (lambda (x) (* x factor))
+              stream))
+(define (merge s1 s2)
+  (cond ((stream-null? s1) s2)
+        ((stream-null? s2) s1)
+        (else
+         (let ((s1car (stream-car s1))
+               (s2car (stream-car s2)))
+           (cond ((< s1car s2car)
+                  (cons-stream
+                   s1car
+                   (merge (stream-cdr s1) s2)))
+                 ((> s1car s2car)
+                  (cons-stream
+                   s2car
+                   (merge s1 (stream-cdr s2))))
+                 (else
+                  (cons-stream
+                   s1car
+                   (merge (stream-cdr s1)
+                          (stream-cdr s2)))))))))
+(define S (cons-stream 1 (merge (scale-stream S 2) (merge (scale-stream S 3) (scale-stream S 5)))))
+
+; n - 1 additions are performed when we compute the nth Fibonacci number using the add-streams definition, since we perform an addition to
+; compute each additional Fibonacci number after the 1st
+; Without memoization, the number of additions performed would be exponentially greater because a tree-recursive process would be generated
+; from the need to recompute Fibonacci numbers that have already been computed
+
+; It is the fractional part of the base radix result of the long division of num divided by den
+; (expand 1 7 10) = (1 4 2 8 5 7 ...)
+; (expand 3 8 10) = (3 7 5 0 0 0 ...)
+
+(define (integrate-series s) (stream-map / s integers))
+; Maclaurin series for cosine and sine
+(define cosine-series (cons-stream 1 (integrate-series (scale-stream sine-series -1))))
+(define sine-series (cons-stream 0 (integrate-series cosine-series)))
+
+(define (mul-series s1 s2)
+  (cons-stream (* (stream-car s1) (stream-car s2)) (add-streams (add-streams (scale-stream (stream-cdr s1) (stream-car s2))
+                                                                             (scale-stream (stream-cdr s2) (stream-car s1)))
+                                                                (cons-stream 0 (mul-series (stream-cdr s1) (stream-cdr s2))))))
+; sin^2 + cos^2
+; (display-stream (add-streams (mul-series sine-series sine-series) (mul-series cosine-series cosine-series)))
+
+(define (invert-unit-series s)
+  (cons-stream 1 (scale-stream (mul-series (stream-cdr s) (invert-unit-series s)) -1)))
+
+(define (div-series s1 s2)
+  (if (= (stream-car s2) 0)
+      (error "Denominator has a zero constant term")
+      (mul-series s1 (scale-stream (invert-unit-series s2) (/ 1 (stream-car s2))))))
+(define tangent-series (div-series sine-series cosine-series))
+;(display-stream tangent-series)
