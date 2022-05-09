@@ -399,6 +399,19 @@
 ;                smoothed
 ;                (cons-stream 0 smoothed))))
 
+; Without using the integral procedure solve works without delay
+;(define (solve f y0 dt)
+;  (define y (cons-stream y0 (add-streams (scale-stream dy dt) y)))
+;  (define dy (stream-map f y))
+;  y)
+;(define (solve f y0 dt)
+;  (define y 0)
+;  (define dy 0)
+;  (set! y (cons-stream y0 (add-streams (scale-stream dy dt) y)))
+;  (set! dy (stream-map f y))
+;  y)
+;(stream-ref (solve (lambda (y) y) 1 0.001) 1000)
+
 ;(define (integral delayed-integrand initial-value dt)
 ;  (cons-stream
 ;   initial-value
